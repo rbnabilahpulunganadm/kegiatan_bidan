@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekap Kegiatan Bidan</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Yuji+Syuku&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Yuji Syuku', serif;
+            background-image: url('https://i.pinimg.com/originals/b7/2c/6a/b72c6a470123e7f42b85e1a2c3a51f89.jpg');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+        .main-container {
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+        .title {
+            font-family: 'Mochiy Pop One', sans-serif;
+            color: #4a4a4a;
+        }
+        .btn-primary {
+            background-color: #ff9ab4; /* Sakura Pink */
+            color: white;
+            font-family: 'Mochiy Pop One', sans-serif;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-primary:hover {
+            background-color: #ff7da1;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0,0,0,0.15);
+        }
+        .input-field {
+            border-color: #ffc2d1;
+            transition: all 0.3s ease;
+        }
+        .input-field:focus {
+            border-color: #ff9ab4;
+            box-shadow: 0 0 0 3px rgba(255, 154, 180, 0.5);
+            outline: none;
+        }
+        .floating-emoji {
+            animation: float 4s ease-in-out infinite;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+
+    <div id="welcome-screen" class="main-container p-8 rounded-2xl shadow-xl max-w-sm w-full text-center">
+        <p class="text-gray-600 mb-6">Selamat datang di Nabilah Pulungan</p>
+        <div class="text-7xl mb-4 floating-emoji">🌸</div>
+        <h1 class="title text-2xl mb-2">こんにちは!</h1>
+        <p class="text-gray-600 mb-6">Siapa nama kamu?</p>
+        <input type="text" id="name-input" class="input-field w-full p-3 rounded-lg border-2 text-center" placeholder="Ketik nama di sini...">
+        <button id="start-button" class="btn-primary w-full py-3 mt-4 rounded-lg">Mulai</button>
+    </div>
+
+    <div id="main-form" class="main-container p-8 rounded-2xl shadow-xl max-w-sm w-full hidden">
+        <h1 id="form-title" class="title text-xl mb-6 text-center"></h1>
+        <form id="activity-form">
+            <div class="mb-4">
+                <label for="activity-type" class="block text-gray-700 mb-2">Pilih Jenis Kegiatan:</label>
+                <select id="activity-type" class="input-field w-full p-3 rounded-lg border-2 bg-white">
+                    <option value="Mendampingi Partus">Mendampingi Partus</option>
+                    <option value="Mendampingi ANC/Senam">Mendampingi ANC/Senam</option>
+                    <option value="Home Care">Home Care</option>
+                    <option value="Lembur">Lembur</option>
+                    <option value="Dapat Pasien Mom Spa">Dapat Pasien Mom Spa</option>
+                    <option value="Dapat Pasien Ladies Spa">Dapat Pasien Ladies Spa</option>
+                    <option value="Dapat Pasien Baby Spa">Dapat Pasien Baby Spa</option>
+                    <option value="Dapat Pasien Kids Spa">Dapat Pasien Kids Spa</option>
+                    <option value="Dapat Pasien Umum">Dapat Pasien Umum</option>
+                </select>
+            </div>
+            <div class="mb-6">
+                <label for="patient-name" class="block text-gray-700 mb-2">Nama Pasien:</label>
+                <input type="text" id="patient-name" class="input-field w-full p-3 rounded-lg border-2" placeholder="Nama lengkap pasien...">
+            </div>
+            <button type="submit" id="submit-button" class="btn-primary w-full py-3 rounded-lg">
+                Kirim Laporan
+            </button>
+        </form>
+        <div id="loading-spinner" class="hidden text-center mt-4">
+            <p>Mengirim data... 🍥</p>
+        </div>
+        <div id="response-message" class="text-center mt-4 font-bold"></div>
+    </div>
+
+    <script>
+        // --- PENTING: GANTI URL DI BAWAH INI ---
+        const google_sheet_url = 'https://script.google.com/macros/s/AKfycbySZf9zvXCJD0-KcU5-0r2FOivO7kI5asl8wZ0UCEYTqk52kqjaZcaSYJBlxDFfy41d/exec';
+        // --- BATAS PENGGANTIAN URL ---
+
+        const welcomeScreen = document.getElementById('welcome-screen');
+        const mainForm = document.getElementById('main-form');
+        const startButton = document.getElementById('start-button');
+        const nameInput = document.getElementById('name-input');
+        const formTitle = document.getElementById('form-title');
+        const activityForm = document.getElementById('activity-form');
+        const submitButton = document.getElementById('submit-button');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const responseMessage = document.getElementById('response-message');
+        const patientNameInput = document.getElementById('patient-name');
+        const activityTypeSelect = document.getElementById('activity-type');
+
+        let bidanName = '';
+
+        startButton.addEventListener('click', () => {
+            bidanName = nameInput.value.trim();
+            if (bidanName) {
+                welcomeScreen.classList.add('hidden');
+                formTitle.textContent = `Halo, ${bidanName}! ✨ Ada kegiatan apa?`;
+                mainForm.classList.remove('hidden');
+            } else {
+                alert('Nama tidak boleh kosong ya!');
+            }
+        });
+
+        activityForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+
+            if (google_sheet_url === 'GANTI_DENGAN_URL_GOOGLE_APPS_SCRIPT_ANDA') {
+                responseMessage.textContent = '⛔ URL Google Sheet belum diatur!';
+                responseMessage.className = 'text-center mt-4 font-bold text-red-600';
+                return;
+            }
+
+            // Show loading and disable button
+            loadingSpinner.classList.remove('hidden');
+            responseMessage.textContent = '';
+            submitButton.disabled = true;
+            submitButton.textContent = 'Mengirim...';
+
+            const now = new Date();
+            const day = now.toLocaleDateString('id-ID', { weekday: 'long' });
+            const date = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+            const time = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            const activityType = activityTypeSelect.value;
+            const patientName = patientNameInput.value.trim();
+
+            const formData = {
+                namaBidan: bidanName,
+                kegiatan: activityType,
+                namaPasien: patientName,
+                hari: day,
+                tanggal: date,
+                jam: time,
+            };
+
+            fetch(google_sheet_url, {
+                method: 'POST',
+                mode: 'no-cors', // Important for simple Apps Script deployment
+                cache: 'no-cache',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            })
+            .then(() => {
+                responseMessage.textContent = 'Data berhasil terkirim! 🎉';
+                responseMessage.className = 'text-center mt-4 font-bold text-green-600';
+                activityForm.reset();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                responseMessage.textContent = 'Oops! Gagal mengirim data. Coba lagi.';
+                responseMessage.className = 'text-center mt-4 font-bold text-red-600';
+            })
+            .finally(() => {
+                loadingSpinner.classList.add('hidden');
+                submitButton.disabled = false;
+                submitButton.textContent = 'Kirim Laporan';
+                setTimeout(() => { responseMessage.textContent = ''; }, 4000);
+            });
+        });
+
+    </script>
+</body>
+</html>

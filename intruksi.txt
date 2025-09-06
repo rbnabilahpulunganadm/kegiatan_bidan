@@ -1,0 +1,30 @@
+Cara Menghubungkan Aplikasi ke Google Sheet AndaAgar data dari aplikasi bisa masuk ke Google Sheet, Anda perlu membuat sebuah "jembatan" menggunakan Google Apps Script. Ikuti langkah-langkah ini dengan teliti.Langkah 1: Siapkan Google Sheet AndaBuka sheets.google.com dan buat spreadsheet baru.Beri nama spreadsheet Anda, misalnya "Rekap Kegiatan Klinik".Di baris pertama, buat judul kolom (header) persis seperti ini:Kolom A: HariKolom B: TanggalKolom C: JamKolom D: Nama BidanKolom E: Jenis KegiatanKolom F: Nama PasienLangkah 2: Buat Google Apps ScriptDi dalam spreadsheet yang sama, klik menu Extensions > Apps Script.Hapus semua kode contoh yang ada di editor.Salin dan tempel (copy-paste) seluruh kode di bawah ini ke dalam editor Apps Script:function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+
+    // Ganti "Sheet1" dengan nama sheet Anda jika berbeda
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1"); 
+
+    // Ambil data dari aplikasi
+    var hari = data.hari;
+    var tanggal = data.tanggal;
+    var jam = data.jam;
+    var namaBidan = data.namaBidan;
+    var kegiatan = data.kegiatan;
+    var namaPasien = data.namaPasien;
+
+    // Tambahkan baris baru di sheet
+    sheet.appendRow([hari, tanggal, jam, namaBidan, kegiatan, namaPasien]);
+
+    return ContentService.createTextOutput(JSON.stringify({
+      "result": "success"
+    })).setMimeType(ContentService.MimeType.JSON);
+
+  } catch (error) {
+    return ContentService.createTextOutput(JSON.stringify({
+      "result": "error",
+      "message": error.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+Klik ikon Simpan (gambar disket). Beri nama proyek, misalnya "Skrip Rekap".Langkah 3: Deploy Script sebagai Web AppDi pojok kanan atas editor Apps Script, klik tombol biru Deploy > New deployment.Klik ikon gerigi (⚙️) di sebelah kiri "Select type", lalu pilih Web app.Isi konfigurasi sebagai berikut:Description: Web App Rekap Kegiatan Bidan (opsional)Execute as: MeWho has access: Anyone (Ini SANGAT PENTING agar aplikasi bisa mengirim data)Klik tombol Deploy.Google akan meminta izin. Klik Authorize access, pilih akun Google Anda, lalu klik Advanced > Go to (nama proyek Anda) (unsafe), dan terakhir klik Allow.Setelah berhasil, akan muncul jendela "Deployment successfully". Salin (copy) URL Web app yang diberikan. URL ini yang akan kita gunakan.Langkah 4: Masukkan URL ke File HTMLBuka kembali file rekap-kegiatan.html yang saya berikan.Cari baris ini di bagian bawah kode:const google_sheet_url = 'GANTI_DENGAN_URL_GOOGLE_APPS_SCRIPT_ANDA';Ganti tulisan GANTI_DENGAN_URL_GOOGLE_APPS_SCRIPT_ANDA dengan URL Web app yang baru saja Anda salin. Pastikan URL berada di dalam tanda kutip.Simpan file HTML tersebut.Selesai!Sekarang, buka file rekap-kegiatan.html di browser (bisa di komputer atau ponsel), dan coba isi data. Data yang Anda kirim akan otomatis masuk ke dalam Google Sheet Anda secara real-time.
