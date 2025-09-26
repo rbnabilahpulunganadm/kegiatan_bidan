@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rekap Kegiatan Bidan</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Yuji+Syuku&display=swap" rel="stylesheet">
@@ -55,6 +56,41 @@
             50% { transform: translateY(-15px); }
             100% { transform: translateY(0px); }
         }
+        .tab-button {
+            background-color: #f0f0f0;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab-button.active {
+            background-color: #ff9ab4;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #ff9ab4;
+            color: white;
+        }
+        .data-table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
@@ -68,35 +104,105 @@
         <button id="start-button" class="btn-primary w-full py-3 mt-4 rounded-lg">Mulai</button>
     </div>
 
-    <div id="main-form" class="main-container p-8 rounded-2xl shadow-xl max-w-sm w-full hidden">
-        <h1 id="form-title" class="title text-xl mb-6 text-center"></h1>
-        <form id="activity-form">
-            <div class="mb-4">
-                <label for="activity-type" class="block text-gray-700 mb-2">Pilih Jenis Kegiatan:</label>
-                <select id="activity-type" class="input-field w-full p-3 rounded-lg border-2 bg-white">
-                    <option value="Mendampingi Partus">Mendampingi Partus</option>
-                    <option value="Mendampingi ANC/Senam">Mendampingi ANC/Senam</option>
-                    <option value="Home Care">Home Care</option>
-                    <option value="Lembur">Lembur</option>
-                    <option value="Dapat Pasien Mom Spa">Dapat Pasien Mom Spa</option>
-                    <option value="Dapat Pasien Ladies Spa">Dapat Pasien Ladies Spa</option>
-                    <option value="Dapat Pasien Baby Spa">Dapat Pasien Baby Spa</option>
-                    <option value="Dapat Pasien Kids Spa">Dapat Pasien Kids Spa</option>
-                    <option value="Dapat Pasien Umum">Dapat Pasien Umum</option>
-                </select>
-            </div>
-            <div class="mb-6">
-                <label for="patient-name" class="block text-gray-700 mb-2">Nama Pasien:</label>
-                <input type="text" id="patient-name" class="input-field w-full p-3 rounded-lg border-2" placeholder="Nama lengkap pasien...">
-            </div>
-            <button type="submit" id="submit-button" class="btn-primary w-full py-3 rounded-lg">
-                Kirim Laporan
-            </button>
-        </form>
-        <div id="loading-spinner" class="hidden text-center mt-4">
-            <p>Mengirim data... 🍥</p>
+    <div id="main-app" class="main-container p-8 rounded-2xl shadow-xl max-w-4xl w-full hidden">
+        <div class="flex mb-4">
+            <button class="tab-button active" data-tab="form-tab">Form Input</button>
+            <button class="tab-button" data-tab="admin-tab">Admin</button>
+            <button class="tab-button" data-tab="stats-tab">Statistik</button>
         </div>
-        <div id="response-message" class="text-center mt-4 font-bold"></div>
+
+        <!-- Tab Form Input -->
+        <div id="form-tab" class="tab-content active">
+            <h1 id="form-title" class="title text-xl mb-6 text-center"></h1>
+            <form id="activity-form">
+                <div class="mb-4">
+                    <label for="activity-type" class="block text-gray-700 mb-2">Pilih Jenis Kegiatan:</label>
+                    <select id="activity-type" class="input-field w-full p-3 rounded-lg border-2 bg-white">
+                        <option value="Mendampingi Partus">Mendampingi Partus</option>
+                        <option value="Mendampingi ANC/Senam">Mendampingi ANC/Senam</option>
+                        <option value="Home Care">Home Care</option>
+                        <option value="Lembur">Lembur</option>
+                        <option value="Dapat Pasien Mom Spa">Dapat Pasien Mom Spa</option>
+                        <option value="Dapat Pasien Ladies Spa">Dapat Pasien Ladies Spa</option>
+                        <option value="Dapat Pasien Baby Spa">Dapat Pasien Baby Spa</option>
+                        <option value="Dapat Pasien Kids Spa">Dapat Pasien Kids Spa</option>
+                        <option value="Dapat Pasien Umum">Dapat Pasien Umum</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="patient-name" class="block text-gray-700 mb-2">Nama Pasien:</label>
+                    <input type="text" id="patient-name" class="input-field w-full p-3 rounded-lg border-2" placeholder="Nama lengkap pasien...">
+                </div>
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="activity-date" class="block text-gray-700 mb-2">Tanggal Kegiatan:</label>
+                        <input type="date" id="activity-date" class="input-field w-full p-3 rounded-lg border-2">
+                    </div>
+                    <div>
+                        <label for="activity-time" class="block text-gray-700 mb-2">Waktu Kegiatan:</label>
+                        <input type="time" id="activity-time" class="input-field w-full p-3 rounded-lg border-2">
+                    </div>
+                    <div>
+                        <label for="activity-day" class="block text-gray-700 mb-2">Hari Kegiatan:</label>
+                        <input type="text" id="activity-day" class="input-field w-full p-3 rounded-lg border-2" readonly>
+                    </div>
+                </div>
+                <button type="submit" id="submit-button" class="btn-primary w-full py-3 rounded-lg">
+                    Kirim Laporan
+                </button>
+            </form>
+            <div id="loading-spinner" class="hidden text-center mt-4">
+                <p>Mengirim data... 🍥</p>
+            </div>
+            <div id="response-message" class="text-center mt-4 font-bold"></div>
+        </div>
+
+        <!-- Tab Admin -->
+        <div id="admin-tab" class="tab-content">
+            <h2 class="title text-xl mb-4 text-center">Panel Admin</h2>
+            <div id="admin-login" class="mb-4">
+                <label for="admin-password" class="block text-gray-700 mb-2">Masukkan Sandi Admin:</label>
+                <input type="password" id="admin-password" class="input-field w-full p-3 rounded-lg border-2" placeholder="Sandi admin...">
+                <button id="login-button" class="btn-primary w-full py-3 mt-4 rounded-lg">Login</button>
+            </div>
+            <div id="admin-content" class="hidden">
+                <h3 class="text-lg font-bold mb-2">Data Kegiatan Bidan</h3>
+                <div class="overflow-x-auto">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Hari</th>
+                                <th>Tanggal</th>
+                                <th>Jam</th>
+                                <th>Nama Bidan</th>
+                                <th>Jenis Kegiatan</th>
+                                <th>Nama Pasien</th>
+                                <th>Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-table-body">
+                            <!-- Data akan diisi oleh JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Statistik -->
+        <div id="stats-tab" class="tab-content">
+            <h2 class="title text-xl mb-4 text-center">Statistik Kegiatan Bidan</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <canvas id="activityChart"></canvas>
+                </div>
+                <div>
+                    <canvas id="bidanChart"></canvas>
+                </div>
+            </div>
+            <div class="mt-6">
+                <canvas id="timeChart"></canvas>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -104,8 +210,9 @@
         const google_sheet_url = 'https://script.google.com/macros/s/AKfycbySZf9zvXCJD0-KcU5-0r2FOivO7kI5asl8wZ0UCEYTqk52kqjaZcaSYJBlxDFfy41d/exec';
         // --- BATAS PENGGANTIAN URL ---
 
+        // Elemen UI
         const welcomeScreen = document.getElementById('welcome-screen');
-        const mainForm = document.getElementById('main-form');
+        const mainApp = document.getElementById('main-app');
         const startButton = document.getElementById('start-button');
         const nameInput = document.getElementById('name-input');
         const formTitle = document.getElementById('form-title');
@@ -115,19 +222,43 @@
         const responseMessage = document.getElementById('response-message');
         const patientNameInput = document.getElementById('patient-name');
         const activityTypeSelect = document.getElementById('activity-type');
+        const activityDateInput = document.getElementById('activity-date');
+        const activityTimeInput = document.getElementById('activity-time');
+        const activityDayInput = document.getElementById('activity-day');
+        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabContents = document.querySelectorAll('.tab-content');
+        const adminPasswordInput = document.getElementById('admin-password');
+        const loginButton = document.getElementById('login-button');
+        const adminLogin = document.getElementById('admin-login');
+        const adminContent = document.getElementById('admin-content');
+        const adminTableBody = document.getElementById('admin-table-body');
 
+        // Data aplikasi
         let bidanName = '';
+        let activitiesData = [];
+        let activityChart, bidanChart, timeChart;
 
+        // Inisialisasi tanggal dan waktu
+        const now = new Date();
+        activityDateInput.valueAsDate = now;
+        activityTimeInput.value = now.toTimeString().slice(0, 5);
+        updateDayFromDate();
+
+        // Event Listeners
         startButton.addEventListener('click', () => {
             bidanName = nameInput.value.trim();
             if (bidanName) {
                 welcomeScreen.classList.add('hidden');
                 formTitle.textContent = `Halo, ${bidanName}! ✨ Ada kegiatan apa?`;
-                mainForm.classList.remove('hidden');
+                mainApp.classList.remove('hidden');
+                loadActivitiesData();
             } else {
                 alert('Nama tidak boleh kosong ya!');
             }
         });
+
+        activityDateInput.addEventListener('change', updateDayFromDate);
+        activityTimeInput.addEventListener('change', updateDayFromDate);
 
         activityForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -144,10 +275,10 @@
             submitButton.disabled = true;
             submitButton.textContent = 'Mengirim...';
 
-            const now = new Date();
-            const day = now.toLocaleDateString('id-ID', { weekday: 'long' });
-            const date = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-            const time = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const activityDate = new Date(activityDateInput.value);
+            const day = activityDayInput.value;
+            const date = activityDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+            const time = activityTimeInput.value;
 
             const activityType = activityTypeSelect.value;
             const patientName = patientNameInput.value.trim();
@@ -174,6 +305,15 @@
                 responseMessage.textContent = 'Data berhasil terkirim! 🎉';
                 responseMessage.className = 'text-center mt-4 font-bold text-green-600';
                 activityForm.reset();
+                
+                // Reset tanggal dan waktu ke saat ini
+                const now = new Date();
+                activityDateInput.valueAsDate = now;
+                activityTimeInput.value = now.toTimeString().slice(0, 5);
+                updateDayFromDate();
+                
+                // Refresh data
+                loadActivitiesData();
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -188,6 +328,222 @@
             });
         });
 
+        // Fungsi untuk mengupdate hari berdasarkan tanggal
+        function updateDayFromDate() {
+            const date = new Date(activityDateInput.value);
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            activityDayInput.value = days[date.getDay()];
+        }
+
+        // Fungsi untuk beralih tab
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabId = button.getAttribute('data-tab');
+                
+                // Nonaktifkan semua tab
+                tabButtons.forEach(btn => btn.classList.remove('active'));
+                tabContents.forEach(content => content.classList.remove('active'));
+                
+                // Aktifkan tab yang dipilih
+                button.classList.add('active');
+                document.getElementById(tabId).classList.add('active');
+                
+                // Jika tab statistik dipilih, perbarui grafik
+                if (tabId === 'stats-tab') {
+                    updateCharts();
+                }
+            });
+        });
+
+        // Fungsi untuk login admin
+        loginButton.addEventListener('click', () => {
+            const password = adminPasswordInput.value.trim();
+            if (password === '112211') {
+                adminLogin.classList.add('hidden');
+                adminContent.classList.remove('hidden');
+                loadAdminData();
+            } else {
+                alert('Sandi salah!');
+            }
+        });
+
+        // Fungsi untuk memuat data kegiatan
+        function loadActivitiesData() {
+            // Simulasi data - dalam implementasi nyata, ini akan mengambil data dari Google Sheets
+            activitiesData = [
+                { hari: 'Kamis', tanggal: '25 September 2025', jam: '16.30.46', namaBidan: 'Linda Warnii', kegiatan: 'Dapat Pasien Baby Spa', namaPasien: 'Yuli Ridata Hasibuan' },
+                { hari: 'Minggu', tanggal: '7 September 2025', jam: '09.39.35', namaBidan: 'aisyah', kegiatan: 'Home Care', namaPasien: 'beryl' },
+                { hari: 'Senin', tanggal: '1 September 2025', jam: '09.40.43', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
+                { hari: 'Selasa', tanggal: '2 September 2025', jam: '09.41.01', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
+                { hari: 'Senin', tanggal: '15 September 2025', jam: '09.41.20', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'mama mustofa' },
+                { hari: 'Kamis', tanggal: '4 September 2025', jam: '09.41.33', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
+                { hari: 'Sabtu', tanggal: '6 September 2025', jam: '09.41.45', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
+                { hari: 'Jumat', tanggal: '12 September 2025', jam: '09.41.55', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
+                { hari: 'Jumat', tanggal: '24 September 2025', jam: '09.42.07', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
+                { hari: 'Sabtu', tanggal: '13 September 2025', jam: '09.47.54', namaBidan: 'aisyah', kegiatan: 'Lembur', namaPasien: 'khaifan' },
+                { hari: 'Selasa', tanggal: '9 September 2025', jam: '09.54.16', namaBidan: 'aisyah', kegiatan: 'Lembur', namaPasien: 'satria' }
+            ];
+        }
+
+        // Fungsi untuk memuat data admin
+        function loadAdminData() {
+            adminTableBody.innerHTML = '';
+            activitiesData.forEach((activity, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${activity.hari}</td>
+                    <td>${activity.tanggal}</td>
+                    <td>${activity.jam}</td>
+                    <td>${activity.namaBidan}</td>
+                    <td>${activity.kegiatan}</td>
+                    <td>${activity.namaPasien}</td>
+                    <td>
+                        <button class="edit-btn bg-blue-500 text-white px-2 py-1 rounded" data-index="${index}">Edit</button>
+                        <button class="delete-btn bg-red-500 text-white px-2 py-1 rounded ml-2" data-index="${index}">Hapus</button>
+                    </td>
+                `;
+                adminTableBody.appendChild(row);
+            });
+
+            // Tambahkan event listener untuk tombol edit dan hapus
+            document.querySelectorAll('.edit-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = e.target.getAttribute('data-index');
+                    editActivity(index);
+                });
+            });
+
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const index = e.target.getAttribute('data-index');
+                    deleteActivity(index);
+                });
+            });
+        }
+
+        // Fungsi untuk mengedit kegiatan
+        function editActivity(index) {
+            const activity = activitiesData[index];
+            const newDate = prompt('Masukkan tanggal baru (format: DD/MM/YYYY):', activity.tanggal);
+            const newTime = prompt('Masukkan waktu baru (format: HH.MM.SS):', activity.jam);
+            
+            if (newDate && newTime) {
+                // Simulasi update data
+                activitiesData[index].tanggal = newDate;
+                activitiesData[index].jam = newTime;
+                loadAdminData();
+                alert('Data berhasil diperbarui!');
+            }
+        }
+
+        // Fungsi untuk menghapus kegiatan
+        function deleteActivity(index) {
+            if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
+                // Simulasi penghapusan data
+                activitiesData.splice(index, 1);
+                loadAdminData();
+                alert('Data berhasil dihapus!');
+            }
+        }
+
+        // Fungsi untuk memperbarui grafik statistik
+        function updateCharts() {
+            // Hancurkan grafik yang ada jika ada
+            if (activityChart) activityChart.destroy();
+            if (bidanChart) bidanChart.destroy();
+            if (timeChart) timeChart.destroy();
+
+            // Hitung statistik
+            const activityCounts = {};
+            const bidanCounts = {};
+            const timeCounts = {};
+
+            activitiesData.forEach(activity => {
+                // Hitung per jenis kegiatan
+                activityCounts[activity.kegiatan] = (activityCounts[activity.kegiatan] || 0) + 1;
+                
+                // Hitung per bidan
+                bidanCounts[activity.namaBidan] = (bidanCounts[activity.namaBidan] || 0) + 1;
+                
+                // Hitung per jam (dibulatkan ke jam terdekat)
+                const hour = activity.jam.split('.')[0];
+                timeCounts[hour] = (timeCounts[hour] || 0) + 1;
+            });
+
+            // Grafik Jenis Kegiatan
+            const activityCtx = document.getElementById('activityChart').getContext('2d');
+            activityChart = new Chart(activityCtx, {
+                type: 'pie',
+                data: {
+                    labels: Object.keys(activityCounts),
+                    datasets: [{
+                        data: Object.values(activityCounts),
+                        backgroundColor: [
+                            '#ff9ab4', '#ffc2d1', '#ff7da1', '#ff5c8d',
+                            '#ff97b7', '#ffacc5', '#ffb3c6', '#ffc8dd', '#ffddd2'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Distribusi Jenis Kegiatan'
+                        }
+                    }
+                }
+            });
+
+            // Grafik Kegiatan per Bidan
+            const bidanCtx = document.getElementById('bidanChart').getContext('2d');
+            bidanChart = new Chart(bidanCtx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(bidanCounts),
+                    datasets: [{
+                        label: 'Jumlah Kegiatan',
+                        data: Object.values(bidanCounts),
+                        backgroundColor: '#ff9ab4'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Kegiatan per Bidan'
+                        }
+                    }
+                }
+            });
+
+            // Grafik Kegiatan per Waktu
+            const timeCtx = document.getElementById('timeChart').getContext('2d');
+            timeChart = new Chart(timeCtx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(timeCounts).sort(),
+                    datasets: [{
+                        label: 'Jumlah Kegiatan',
+                        data: Object.keys(timeCounts).sort().map(hour => timeCounts[hour]),
+                        borderColor: '#ff9ab4',
+                        backgroundColor: 'rgba(255, 154, 180, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Kegiatan per Waktu (Jam)'
+                        }
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>
