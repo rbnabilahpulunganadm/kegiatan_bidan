@@ -6,6 +6,9 @@
     <title>Rekap Kegiatan Bidan</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Yuji+Syuku&display=swap" rel="stylesheet">
@@ -91,6 +94,40 @@
         .data-table tr:nth-child(even) {
             background-color: #f9f9f9;
         }
+        .optional-field {
+            display: none;
+        }
+        /* Warna berbeda untuk setiap bidan */
+        .bidan-linda { background-color: #e3f2fd !important; }
+        .bidan-riska { background-color: #f3e5f5 !important; }
+        .bidan-aisyah { background-color: #e8f5e8 !important; }
+        .bidan-desva { background-color: #fff3e0 !important; }
+        .bidan-sarina { background-color: #fce4ec !important; }
+        .bidan-other { background-color: #f5f5f5 !important; }
+        
+        /* Style untuk tabel cetak */
+        .print-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: 'Arial', sans-serif;
+        }
+        .print-table th {
+            background-color: #ff9ab4;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        .print-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        .print-header {
+            text-align: center;
+            margin-bottom: 20px;
+            font-family: 'Mochiy Pop One', sans-serif;
+            color: #4a4a4a;
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
@@ -104,7 +141,7 @@
         <button id="start-button" class="btn-primary w-full py-3 mt-4 rounded-lg">Mulai</button>
     </div>
 
-    <div id="main-app" class="main-container p-8 rounded-2xl shadow-xl max-w-4xl w-full hidden">
+    <div id="main-app" class="main-container p-8 rounded-2xl shadow-xl max-w-6xl w-full hidden">
         <div class="flex mb-4">
             <button class="tab-button active" data-tab="form-tab">Form Input</button>
             <button class="tab-button" data-tab="admin-tab">Admin</button>
@@ -129,10 +166,24 @@
                         <option value="Dapat Pasien Umum">Dapat Pasien Umum</option>
                     </select>
                 </div>
+                
+                <!-- Field Lokasi Home Care (Opsional) -->
+                <div id="homecare-location-field" class="optional-field mb-4">
+                    <label for="homecare-location" class="block text-gray-700 mb-2">Lokasi Home Care (Opsional):</label>
+                    <input type="text" id="homecare-location" class="input-field w-full p-3 rounded-lg border-2" placeholder="Contoh: Rumah Pasien, Alamat lengkap...">
+                </div>
+                
                 <div class="mb-4">
                     <label for="patient-name" class="block text-gray-700 mb-2">Nama Pasien:</label>
                     <input type="text" id="patient-name" class="input-field w-full p-3 rounded-lg border-2" placeholder="Nama lengkap pasien...">
                 </div>
+                
+                <!-- Field Keterangan Tambahan (Opsional untuk semua jenis) -->
+                <div class="mb-4">
+                    <label for="additional-notes" class="block text-gray-700 mb-2">Keterangan Tambahan (Opsional):</label>
+                    <textarea id="additional-notes" class="input-field w-full p-3 rounded-lg border-2" rows="3" placeholder="Tambahkan catatan khusus jika diperlukan..."></textarea>
+                </div>
+                
                 <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                         <label for="activity-date" class="block text-gray-700 mb-2">Tanggal Kegiatan:</label>
@@ -166,9 +217,36 @@
                 <button id="login-button" class="btn-primary w-full py-3 mt-4 rounded-lg">Login</button>
             </div>
             <div id="admin-content" class="hidden">
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button id="refresh-data" class="btn-primary py-2 px-4 rounded-lg">Refresh Data</button>
+                    <button id="print-pdf" class="btn-primary py-2 px-4 rounded-lg bg-green-500 hover:bg-green-600">Cetak PDF</button>
+                    <button id="export-excel" class="btn-primary py-2 px-4 rounded-lg bg-blue-500 hover:bg-blue-600">Export Excel</button>
+                    <button id="print-table" class="btn-primary py-2 px-4 rounded-lg bg-purple-500 hover:bg-purple-600">Print Tabel</button>
+                </div>
+                
+                <!-- Filter Data -->
+                <div class="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="filter-bidan" class="block text-gray-700 mb-2">Filter Bidan:</label>
+                        <select id="filter-bidan" class="input-field w-full p-2 rounded-lg border-2">
+                            <option value="all">Semua Bidan</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filter-kegiatan" class="block text-gray-700 mb-2">Filter Kegiatan:</label>
+                        <select id="filter-kegiatan" class="input-field w-full p-2 rounded-lg border-2">
+                            <option value="all">Semua Kegiatan</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="filter-tanggal" class="block text-gray-700 mb-2">Filter Tanggal:</label>
+                        <input type="date" id="filter-tanggal" class="input-field w-full p-2 rounded-lg border-2">
+                    </div>
+                </div>
+                
                 <h3 class="text-lg font-bold mb-2">Data Kegiatan Bidan</h3>
                 <div class="overflow-x-auto">
-                    <table class="data-table">
+                    <table class="data-table" id="admin-table">
                         <thead>
                             <tr>
                                 <th>Hari</th>
@@ -177,11 +255,40 @@
                                 <th>Nama Bidan</th>
                                 <th>Jenis Kegiatan</th>
                                 <th>Nama Pasien</th>
+                                <th>Lokasi Home Care</th>
+                                <th>Keterangan</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody id="admin-table-body">
                             <!-- Data akan diisi oleh JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Tabel untuk cetakan -->
+                <div id="print-area" class="hidden">
+                    <div class="print-header">
+                        <h1 class="text-2xl font-bold">LAPORAN KEGIATAN BIDAN</h1>
+                        <p class="text-lg">Klinik Nabilah Pulungan</p>
+                        <p id="print-period" class="text-md"></p>
+                    </div>
+                    <table class="print-table" id="print-table-content">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Hari</th>
+                                <th>Tanggal</th>
+                                <th>Jam</th>
+                                <th>Nama Bidan</th>
+                                <th>Jenis Kegiatan</th>
+                                <th>Nama Pasien</th>
+                                <th>Lokasi Home Care</th>
+                                <th>Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="print-table-body">
+                            <!-- Data cetakan akan diisi oleh JavaScript -->
                         </tbody>
                     </table>
                 </div>
@@ -191,6 +298,9 @@
         <!-- Tab Statistik -->
         <div id="stats-tab" class="tab-content">
             <h2 class="title text-xl mb-4 text-center">Statistik Kegiatan Bidan</h2>
+            <div class="mb-4">
+                <button id="refresh-charts" class="btn-primary py-2 px-4 rounded-lg">Refresh Grafik</button>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <canvas id="activityChart"></canvas>
@@ -225,6 +335,9 @@
         const activityDateInput = document.getElementById('activity-date');
         const activityTimeInput = document.getElementById('activity-time');
         const activityDayInput = document.getElementById('activity-day');
+        const homecareLocationField = document.getElementById('homecare-location-field');
+        const homecareLocationInput = document.getElementById('homecare-location');
+        const additionalNotesInput = document.getElementById('additional-notes');
         const tabButtons = document.querySelectorAll('.tab-button');
         const tabContents = document.querySelectorAll('.tab-content');
         const adminPasswordInput = document.getElementById('admin-password');
@@ -232,10 +345,19 @@
         const adminLogin = document.getElementById('admin-login');
         const adminContent = document.getElementById('admin-content');
         const adminTableBody = document.getElementById('admin-table-body');
+        const refreshDataButton = document.getElementById('refresh-data');
+        const refreshChartsButton = document.getElementById('refresh-charts');
+        const printPdfButton = document.getElementById('print-pdf');
+        const exportExcelButton = document.getElementById('export-excel');
+        const printTableButton = document.getElementById('print-table');
+        const filterBidanSelect = document.getElementById('filter-bidan');
+        const filterKegiatanSelect = document.getElementById('filter-kegiatan');
+        const filterTanggalInput = document.getElementById('filter-tanggal');
 
         // Data aplikasi
         let bidanName = '';
         let activitiesData = [];
+        let filteredData = [];
         let activityChart, bidanChart, timeChart;
 
         // Inisialisasi tanggal dan waktu
@@ -257,8 +379,31 @@
             }
         });
 
+        // Toggle field lokasi home care berdasarkan jenis kegiatan
+        activityTypeSelect.addEventListener('change', function() {
+            if (this.value === 'Home Care') {
+                homecareLocationField.style.display = 'block';
+            } else {
+                homecareLocationField.style.display = 'none';
+                homecareLocationInput.value = '';
+            }
+        });
+
         activityDateInput.addEventListener('change', updateDayFromDate);
         activityTimeInput.addEventListener('change', updateDayFromDate);
+
+        refreshDataButton?.addEventListener('click', loadActivitiesData);
+        refreshChartsButton?.addEventListener('click', updateCharts);
+        
+        // Event listeners untuk fitur cetak/export
+        printPdfButton?.addEventListener('click', printToPdf);
+        exportExcelButton?.addEventListener('click', exportToExcel);
+        printTableButton?.addEventListener('click', printTable);
+        
+        // Event listeners untuk filter
+        filterBidanSelect?.addEventListener('change', applyFilters);
+        filterKegiatanSelect?.addEventListener('change', applyFilters);
+        filterTanggalInput?.addEventListener('change', applyFilters);
 
         activityForm.addEventListener('submit', (e) => {
             e.preventDefault();
@@ -277,24 +422,32 @@
 
             const activityDate = new Date(activityDateInput.value);
             const day = activityDayInput.value;
-            const date = activityDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
-            const time = activityTimeInput.value;
+            
+            // Format tanggal sesuai dengan format di sheet (YYYY-MM-DD)
+            const date = activityDate.toISOString().split('T')[0];
+            
+            // Format waktu sesuai dengan format di sheet (HH:MM:SS)
+            const time = activityTimeInput.value + ':00';
 
             const activityType = activityTypeSelect.value;
             const patientName = patientNameInput.value.trim();
+            const homecareLocation = activityType === 'Home Care' ? homecareLocationInput.value.trim() : '';
+            const additionalNotes = additionalNotesInput.value.trim();
 
             const formData = {
                 namaBidan: bidanName,
                 kegiatan: activityType,
                 namaPasien: patientName,
                 hari: day,
-                tanggal: date,
-                jam: time,
+                tanggal: date, // Format: YYYY-MM-DD
+                jam: time,     // Format: HH:MM:SS
+                lokasiHomeCare: homecareLocation,
+                keterangan: additionalNotes
             };
 
             fetch(google_sheet_url, {
                 method: 'POST',
-                mode: 'no-cors', // Important for simple Apps Script deployment
+                mode: 'no-cors',
                 cache: 'no-cache',
                 headers: {
                     'Content-Type': 'application/json',
@@ -311,6 +464,11 @@
                 activityDateInput.valueAsDate = now;
                 activityTimeInput.value = now.toTimeString().slice(0, 5);
                 updateDayFromDate();
+                
+                // Reset field opsional
+                homecareLocationField.style.display = 'none';
+                homecareLocationInput.value = '';
+                additionalNotesInput.value = '';
                 
                 // Refresh data
                 loadActivitiesData();
@@ -352,6 +510,10 @@
                 if (tabId === 'stats-tab') {
                     updateCharts();
                 }
+                // Jika tab admin dipilih, muat data
+                else if (tabId === 'admin-tab') {
+                    loadActivitiesData();
+                }
             });
         });
 
@@ -367,29 +529,110 @@
             }
         });
 
-        // Fungsi untuk memuat data kegiatan
+        // Fungsi untuk memuat data kegiatan dari Google Sheets
         function loadActivitiesData() {
-            // Simulasi data - dalam implementasi nyata, ini akan mengambil data dari Google Sheets
-            activitiesData = [
-                { hari: 'Kamis', tanggal: '25 September 2025', jam: '16.30.46', namaBidan: 'Linda Warnii', kegiatan: 'Dapat Pasien Baby Spa', namaPasien: 'Yuli Ridata Hasibuan' },
-                { hari: 'Minggu', tanggal: '7 September 2025', jam: '09.39.35', namaBidan: 'aisyah', kegiatan: 'Home Care', namaPasien: 'beryl' },
-                { hari: 'Senin', tanggal: '1 September 2025', jam: '09.40.43', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
-                { hari: 'Selasa', tanggal: '2 September 2025', jam: '09.41.01', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
-                { hari: 'Senin', tanggal: '15 September 2025', jam: '09.41.20', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'mama mustofa' },
-                { hari: 'Kamis', tanggal: '4 September 2025', jam: '09.41.33', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
-                { hari: 'Sabtu', tanggal: '6 September 2025', jam: '09.41.45', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
-                { hari: 'Jumat', tanggal: '12 September 2025', jam: '09.41.55', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
-                { hari: 'Jumat', tanggal: '24 September 2025', jam: '09.42.07', namaBidan: 'Riska Wardana', kegiatan: 'Home Care', namaPasien: 'yasmine' },
-                { hari: 'Sabtu', tanggal: '13 September 2025', jam: '09.47.54', namaBidan: 'aisyah', kegiatan: 'Lembur', namaPasien: 'khaifan' },
-                { hari: 'Selasa', tanggal: '9 September 2025', jam: '09.54.16', namaBidan: 'aisyah', kegiatan: 'Lembur', namaPasien: 'satria' }
+            // Mengambil data dari Google Sheets menggunakan GET
+            fetch(google_sheet_url + '?action=getData')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.result === 'success') {
+                        activitiesData = data.data;
+                        filteredData = [...activitiesData];
+                        updateFilterOptions();
+                        if (adminContent.classList.contains('hidden') === false) {
+                            loadAdminData();
+                        }
+                    } else {
+                        console.error('Error loading data:', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching data:', error);
+                    // Fallback ke data simulasi jika gagal
+                    activitiesData = getSimulatedData();
+                    filteredData = [...activitiesData];
+                    updateFilterOptions();
+                    if (adminContent.classList.contains('hidden') === false) {
+                        loadAdminData();
+                    }
+                });
+        }
+
+        // Data simulasi (fallback)
+        function getSimulatedData() {
+            return [
+                { 
+                    hari: 'Kamis', 
+                    tanggal: '2025-09-25', 
+                    jam: '16:30:00', 
+                    namaBidan: 'Linda Warnii', 
+                    kegiatan: 'Lembur', 
+                    namaPasien: 'Yuli Ridata Hasibuan',
+                    lokasiHomeCare: '',
+                    keterangan: 'Lembur malam'
+                },
+                { 
+                    hari: 'Minggu', 
+                    tanggal: '2025-09-07', 
+                    jam: '09:39:00', 
+                    namaBidan: 'aisyah', 
+                    kegiatan: 'Home Care', 
+                    namaPasien: 'beryl',
+                    lokasiHomeCare: 'Rumah Pasien - Jl. Merdeka No. 123',
+                    keterangan: 'Kontrol rutin'
+                }
             ];
+        }
+
+        // Update opsi filter
+        function updateFilterOptions() {
+            // Update filter bidan
+            const bidanList = [...new Set(activitiesData.map(item => item.namaBidan))];
+            filterBidanSelect.innerHTML = '<option value="all">Semua Bidan</option>';
+            bidanList.forEach(bidan => {
+                filterBidanSelect.innerHTML += `<option value="${bidan}">${bidan}</option>`;
+            });
+
+            // Update filter kegiatan
+            const kegiatanList = [...new Set(activitiesData.map(item => item.kegiatan))];
+            filterKegiatanSelect.innerHTML = '<option value="all">Semua Kegiatan</option>';
+            kegiatanList.forEach(kegiatan => {
+                filterKegiatanSelect.innerHTML += `<option value="${kegiatan}">${kegiatan}</option>`;
+            });
+        }
+
+        // Terapkan filter
+        function applyFilters() {
+            const selectedBidan = filterBidanSelect.value;
+            const selectedKegiatan = filterKegiatanSelect.value;
+            const selectedTanggal = filterTanggalInput.value;
+
+            filteredData = activitiesData.filter(item => {
+                const bidanMatch = selectedBidan === 'all' || item.namaBidan === selectedBidan;
+                const kegiatanMatch = selectedKegiatan === 'all' || item.kegiatan === selectedKegiatan;
+                const tanggalMatch = !selectedTanggal || item.tanggal === selectedTanggal;
+                
+                return bidanMatch && kegiatanMatch && tanggalMatch;
+            });
+
+            loadAdminData();
         }
 
         // Fungsi untuk memuat data admin
         function loadAdminData() {
             adminTableBody.innerHTML = '';
-            activitiesData.forEach((activity, index) => {
+            
+            if (filteredData.length === 0) {
                 const row = document.createElement('tr');
+                row.innerHTML = `<td colspan="9" class="text-center py-4">Tidak ada data</td>`;
+                adminTableBody.appendChild(row);
+                return;
+            }
+
+            filteredData.forEach((activity, index) => {
+                const row = document.createElement('tr');
+                const bidanClass = getBidanColorClass(activity.namaBidan);
+                row.className = bidanClass;
                 row.innerHTML = `
                     <td>${activity.hari}</td>
                     <td>${activity.tanggal}</td>
@@ -397,6 +640,8 @@
                     <td>${activity.namaBidan}</td>
                     <td>${activity.kegiatan}</td>
                     <td>${activity.namaPasien}</td>
+                    <td>${activity.lokasiHomeCare || '-'}</td>
+                    <td>${activity.keterangan || '-'}</td>
                     <td>
                         <button class="edit-btn bg-blue-500 text-white px-2 py-1 rounded" data-index="${index}">Edit</button>
                         <button class="delete-btn bg-red-500 text-white px-2 py-1 rounded ml-2" data-index="${index}">Hapus</button>
@@ -421,16 +666,28 @@
             });
         }
 
+        // Fungsi untuk mendapatkan kelas warna berdasarkan nama bidan
+        function getBidanColorClass(namaBidan) {
+            const bidanColors = {
+                'Linda Warnii': 'bidan-linda',
+                'Riska Wardana': 'bidan-riska',
+                'aisyah': 'bidan-aisyah',
+                'Desva': 'bidan-desva',
+                'Sarina pospos': 'bidan-sarina'
+            };
+            return bidanColors[namaBidan] || 'bidan-other';
+        }
+
         // Fungsi untuk mengedit kegiatan
         function editActivity(index) {
-            const activity = activitiesData[index];
-            const newDate = prompt('Masukkan tanggal baru (format: DD/MM/YYYY):', activity.tanggal);
-            const newTime = prompt('Masukkan waktu baru (format: HH.MM.SS):', activity.jam);
+            const activity = filteredData[index];
+            const newDate = prompt('Masukkan tanggal baru (format: YYYY-MM-DD):', activity.tanggal);
+            const newTime = prompt('Masukkan waktu baru (format: HH:MM:SS):', activity.jam);
             
             if (newDate && newTime) {
-                // Simulasi update data
-                activitiesData[index].tanggal = newDate;
-                activitiesData[index].jam = newTime;
+                // Simulasi update data - dalam implementasi nyata, ini akan mengirim ke server
+                filteredData[index].tanggal = newDate;
+                filteredData[index].jam = newTime;
                 loadAdminData();
                 alert('Data berhasil diperbarui!');
             }
@@ -439,11 +696,132 @@
         // Fungsi untuk menghapus kegiatan
         function deleteActivity(index) {
             if (confirm('Apakah Anda yakin ingin menghapus data ini?')) {
-                // Simulasi penghapusan data
-                activitiesData.splice(index, 1);
+                // Simulasi penghapusan data - dalam implementasi nyata, ini akan mengirim ke server
+                const activityToDelete = filteredData[index];
+                activitiesData = activitiesData.filter(item => 
+                    !(item.hari === activityToDelete.hari && 
+                      item.tanggal === activityToDelete.tanggal && 
+                      item.jam === activityToDelete.jam &&
+                      item.namaBidan === activityToDelete.namaBidan)
+                );
+                filteredData.splice(index, 1);
                 loadAdminData();
                 alert('Data berhasil dihapus!');
             }
+        }
+
+        // Fungsi untuk mencetak ke PDF
+        function printToPdf() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('landscape');
+            
+            // Header
+            doc.setFontSize(20);
+            doc.setTextColor(255, 154, 180);
+            doc.text('LAPORAN KEGIATAN BIDAN', 15, 20);
+            doc.setFontSize(12);
+            doc.setTextColor(100, 100, 100);
+            doc.text('Klinik Nabilah Pulungan', 15, 28);
+            
+            // Tanggal cetak
+            const now = new Date();
+            doc.text(`Dicetak pada: ${now.toLocaleDateString('id-ID')} ${now.toLocaleTimeString('id-ID')}`, 15, 35);
+            
+            // Data tabel
+            const headers = [['No', 'Hari', 'Tanggal', 'Jam', 'Nama Bidan', 'Jenis Kegiatan', 'Nama Pasien', 'Lokasi Home Care', 'Keterangan']];
+            const data = filteredData.map((item, index) => [
+                index + 1,
+                item.hari,
+                item.tanggal,
+                item.jam,
+                item.namaBidan,
+                item.kegiatan,
+                item.namaPasien,
+                item.lokasiHomeCare || '-',
+                item.keterangan || '-'
+            ]);
+            
+            doc.autoTable({
+                head: headers,
+                body: data,
+                startY: 40,
+                styles: { fontSize: 8 },
+                headStyles: { fillColor: [255, 154, 180] },
+                alternateRowStyles: { fillColor: [240, 240, 240] }
+            });
+            
+            doc.save(`Laporan_Bidan_${now.toISOString().split('T')[0]}.pdf`);
+        }
+
+        // Fungsi untuk export ke Excel
+        function exportToExcel() {
+            const data = filteredData.map((item, index) => ({
+                'No': index + 1,
+                'Hari': item.hari,
+                'Tanggal': item.tanggal,
+                'Jam': item.jam,
+                'Nama Bidan': item.namaBidan,
+                'Jenis Kegiatan': item.kegiatan,
+                'Nama Pasien': item.namaPasien,
+                'Lokasi Home Care': item.lokasiHomeCare || '-',
+                'Keterangan': item.keterangan || '-'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Laporan Bidan');
+            
+            // Style header
+            const headerStyle = {
+                fill: { fgColor: { rgb: "FF9AB4" } },
+                font: { color: { rgb: "FFFFFF" }, bold: true }
+            };
+            
+            const now = new Date();
+            XLSX.writeFile(workbook, `Laporan_Bidan_${now.toISOString().split('T')[0]}.xlsx`);
+        }
+
+        // Fungsi untuk print tabel
+        function printTable() {
+            const printBody = document.getElementById('print-table-body');
+            const printPeriod = document.getElementById('print-period');
+            
+            // Update periode laporan
+            const now = new Date();
+            printPeriod.textContent = `Periode: ${filteredData.length > 0 ? 
+                `Data terfilter - ${filteredData.length} entri` : 
+                'Semua data'} - Dicetak: ${now.toLocaleDateString('id-ID')}`;
+            
+            // Isi data cetakan
+            printBody.innerHTML = '';
+            filteredData.forEach((item, index) => {
+                const row = document.createElement('tr');
+                const bidanClass = getBidanColorClass(item.namaBidan);
+                row.className = bidanClass;
+                row.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${item.hari}</td>
+                    <td>${item.tanggal}</td>
+                    <td>${item.jam}</td>
+                    <td>${item.namaBidan}</td>
+                    <td>${item.kegiatan}</td>
+                    <td>${item.namaPasien}</td>
+                    <td>${item.lokasiHomeCare || '-'}</td>
+                    <td>${item.keterangan || '-'}</td>
+                `;
+                printBody.appendChild(row);
+            });
+            
+            // Print
+            const printContent = document.getElementById('print-area').innerHTML;
+            const originalContent = document.body.innerHTML;
+            
+            document.body.innerHTML = printContent;
+            window.print();
+            document.body.innerHTML = originalContent;
+            
+            // Reload event listeners
+            loadActivitiesData();
         }
 
         // Fungsi untuk memperbarui grafik statistik
@@ -466,7 +844,7 @@
                 bidanCounts[activity.namaBidan] = (bidanCounts[activity.namaBidan] || 0) + 1;
                 
                 // Hitung per jam (dibulatkan ke jam terdekat)
-                const hour = activity.jam.split('.')[0];
+                const hour = activity.jam.split(':')[0] + ':00';
                 timeCounts[hour] = (timeCounts[hour] || 0) + 1;
             });
 
@@ -520,13 +898,15 @@
 
             // Grafik Kegiatan per Waktu
             const timeCtx = document.getElementById('timeChart').getContext('2d');
+            // Urutkan jam
+            const sortedHours = Object.keys(timeCounts).sort();
             timeChart = new Chart(timeCtx, {
                 type: 'line',
                 data: {
-                    labels: Object.keys(timeCounts).sort(),
+                    labels: sortedHours,
                     datasets: [{
                         label: 'Jumlah Kegiatan',
-                        data: Object.keys(timeCounts).sort().map(hour => timeCounts[hour]),
+                        data: sortedHours.map(hour => timeCounts[hour]),
                         borderColor: '#ff9ab4',
                         backgroundColor: 'rgba(255, 154, 180, 0.1)',
                         fill: true,
