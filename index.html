@@ -132,6 +132,12 @@
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
 
+    <!-- Elemen audio tersembunyi -->
+    <audio id="backgroundAudio" loop autoplay>
+        <source src="lagu.mp3" type="audio/mpeg">
+        Browser Anda tidak mendukung elemen audio.
+    </audio>
+    
     <div id="welcome-screen" class="main-container p-8 rounded-2xl shadow-xl max-w-sm w-full text-center">
         <p class="text-gray-600 mb-6">Selamat datang di Nabilah Pulungan</p>
         <div class="text-7xl mb-4 floating-emoji">🌸</div>
@@ -320,6 +326,29 @@
         const google_sheet_url = 'https://script.google.com/macros/s/AKfycbySZf9zvXCJD0-KcU5-0r2FOivO7kI5asl8wZ0UCEYTqk52kqjaZcaSYJBlxDFfy41d/exec';
         // --- BATAS PENGGANTIAN URL ---
 
+        // Elemen audio tersembunyi
+        // Mengatasi kebijakan autoplay browser
+        document.addEventListener('DOMContentLoaded', function() {
+            const audio = document.getElementById('backgroundAudio');
+            
+            // Coba putar audio
+            const playAudio = () => {
+                audio.play().catch(error => {
+                    console.log('Autoplay diblokir, menunggu interaksi pengguna');
+                });
+            };
+            
+            // Coba putar saat halaman dimuat
+            playAudio();
+            
+            // Coba putar kembali setelah interaksi pengguna
+            document.addEventListener('click', function() {
+                if (audio.paused) {
+                    playAudio();
+                }
+            });
+        });
+        
         // Elemen UI
         const welcomeScreen = document.getElementById('welcome-screen');
         const mainApp = document.getElementById('main-app');
